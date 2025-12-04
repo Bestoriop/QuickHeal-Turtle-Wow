@@ -1742,9 +1742,18 @@ end
 -- stat: SpellID, Mana, Heal, Time
 function QuickHeal_GetSpellInfo(spellName)
     --QuickHeal_debug("********** BREAKPOINT: QuickHeal_GetSpellInfo(spellName) BEGIN **********");
-    -- Check if info is already cached
+    -- Check if info is already cached in the correct format
     if SpellCache[spellName] then
-        return SpellCache[spellName];
+        local cached = SpellCache[spellName];
+        if type(cached) == "table" then
+            -- Check first entry to determine format
+            local firstEntry = cached[0] or cached[1];
+            if firstEntry and type(firstEntry) == "table" and firstEntry.SpellID then
+                -- Cache is in correct GetSpellInfo format
+                return cached;
+            end
+        end
+        -- Cache is in wrong format (from GetSpellIDs) or invalid, clear and rebuild
     end
 
     SpellCache[spellName] = {};
@@ -1805,6 +1814,28 @@ function QuickHeal_GetSpellInfo(spellName)
 end
 
 function QuickHeal_GetSpellIDs(spellName)
+    -- Check cache first
+    if SpellCache[spellName] then
+        local cached = SpellCache[spellName];
+        -- Check if cache was populated by QuickHeal_GetSpellInfo (tables with SpellID key)
+        -- vs QuickHeal_GetSpellIDs (raw numbers)
+        if type(cached) == "table" then
+            -- Check first entry to determine format
+            local firstEntry = cached[0] or cached[1];
+            if firstEntry and type(firstEntry) == "table" and firstEntry.SpellID then
+                -- Cache is in GetSpellInfo format, extract SpellIDs
+                local List = {};
+                for rank, data in pairs(cached) do
+                    if type(data) == "table" and data.SpellID then
+                        List[rank] = data.SpellID;
+                    end
+                end
+                return List;
+            end
+        end
+        return cached;
+    end
+	
     local i = 1;
     local List = {};
     local spellNamei, spellRank;
@@ -3289,6 +3320,7 @@ end
 ------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
+
 
 
 
